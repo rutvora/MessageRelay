@@ -16,3 +16,5 @@ All the apps will then transmit a detected SOS message to other devices over loc
 
 This enables easier search and rescue operations (the SOS messages relayed over local networks can be accessed by anyone, in the assumption that every capable human is willing to help another in need).
 This can also help in case of missing person's case (by knowing the last known location of the user).
+
+*Here, sending message to the internet implies to the deployed cloud server.

@@ -6,8 +6,8 @@ The app, on first run, collects user's identification data (like name, contact, 
 Then, the app remains pretty dormant in the background. It's only task being determination of the approximate area the user is in.
 The app starts it's function when there is a public alert (received directly over the phone or a trigger from the cloud the app is attached to) of any risk (any predicted/impending disaster) or a disaster in the user's area.
 This starts the following functions in the app:
-1. Gathering GPS location of user at intermittent (but frequent) times, and sending them to cloud till there is a connection
-2. Looking for SOS signals (explained below)
+1. Gathering GPS location of user at intermittent (but frequent) times, and sending them to cloud till there is a connection.
+2. Looking for SOS signals (explained below).
 3. Enabling the user to send an SOS (explained below).
 
 An SOS here is a message that the app will send (repeatedly over local networks, once over the internet) which contains the user's critical information like last ID, last location and time of message.

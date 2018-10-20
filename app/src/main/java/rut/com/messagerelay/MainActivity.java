@@ -5,20 +5,26 @@ import android.content.IntentFilter;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class MainActivity extends AppCompatActivity implements WifiP2pManager.ActionListener, WifiP2pManager.PeerListListener {
+public class MainActivity extends AppCompatActivity implements WifiP2pManager.ActionListener,
+        WifiP2pManager.PeerListListener, WifiP2pManager.DnsSdServiceResponseListener, WifiP2pManager.DnsSdTxtRecordListener {
 
     private final IntentFilter intentFilter = new IntentFilter();
     WifiP2pManager.Channel channel;
     WifiP2pManager wifiP2pManager;
     WifiDirectBroadcastReceiver receiver;
     private List<WifiP2pDevice> peers = new ArrayList<>();
+    HashMap<String, String> buddies = new HashMap<>();
+    private WifiP2pDnsSdServiceRequest serviceRequest;
 
     private boolean isWifiP2pEnabled = false;
     private boolean retryChannel = false;
@@ -85,7 +91,6 @@ public class MainActivity extends AppCompatActivity implements WifiP2pManager.Ac
         Toast.makeText(this, "Error searching for peers", Toast.LENGTH_SHORT).show();
     }
 
-
     @Override
     public void onPeersAvailable(WifiP2pDeviceList peerList) {
         List<WifiP2pDevice> refreshedPeers = new ArrayList<>(peerList.getDeviceList());
@@ -97,7 +102,28 @@ public class MainActivity extends AppCompatActivity implements WifiP2pManager.Ac
         if (peers.size() == 0) {
             //TODO
         }
+        discoverService();
+    }
 
+    private void discoverService() {
+        wifiP2pManager.setDnsSdResponseListeners(channel, this, this);
+        serviceRequest = WifiP2pDnsSdServiceRequest.newInstance();
+
+        wifiP2pManager.addServiceRequest(channel, serviceRequest, this);
+        wifiP2pManager.discoverServices(channel, this);
+
+
+    }
+
+    @Override
+    public void onDnsSdServiceAvailable(String instanceName, String registrationType, WifiP2pDevice srcDevice) {
+        //TODO
+    }
+
+    @Override
+    public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> txtRecordMap, WifiP2pDevice srcDevice) {
+        buddies.put(srcDevice.deviceAddress, txtRecordMap.get("buddyname"));
+        //TODO
     }
 
 }

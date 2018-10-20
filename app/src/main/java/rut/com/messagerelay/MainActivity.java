@@ -2,15 +2,26 @@ package rut.com.messagerelay;
 
 import android.content.Context;
 import android.content.IntentFilter;
+import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity implements WifiP2pManager.ActionListener, WifiP2pManager.PeerListListener {
 
     private final IntentFilter intentFilter = new IntentFilter();
     WifiP2pManager.Channel channel;
     WifiP2pManager wifiP2pManager;
+    WifiDirectBroadcastReceiver receiver;
+    private List<WifiP2pDevice> peers = new ArrayList<>();
+
+    private boolean isWifiP2pEnabled = false;
+    private boolean retryChannel = false;
 
     private void setupIntentFilters() {
         // Indicates a change in the Wi-Fi P2P status.
@@ -26,6 +37,10 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
     }
 
+    public void setIsWifiP2pEnabled(boolean isWifiP2pEnabled) {
+        this.isWifiP2pEnabled = isWifiP2pEnabled;
+    }
+
     private void setupBroadcastReceiver() {
         wifiP2pManager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
         channel = wifiP2pManager.initialize(this, getMainLooper(), null);
@@ -39,12 +54,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         setupIntentFilters();
+        setupBroadcastReceiver();
+        startPeerDiscovery();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        receiver = new WiFiDirectBroadcastReceiver(mManager, mChannel, this);
+        receiver = new WifiDirectBroadcastReceiver(wifiP2pManager, channel, this);
         registerReceiver(receiver, intentFilter);
     }
 
@@ -53,4 +70,34 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         unregisterReceiver(receiver);
     }
+
+    private void startPeerDiscovery() {
+        wifiP2pManager.discoverPeers(channel, this);
+    }
+
+    @Override
+    public void onSuccess() {
+        //Leave blank
+    }
+
+    @Override
+    public void onFailure(int reason) {
+        Toast.makeText(this, "Error searching for peers", Toast.LENGTH_SHORT).show();
+    }
+
+
+    @Override
+    public void onPeersAvailable(WifiP2pDeviceList peerList) {
+        List<WifiP2pDevice> refreshedPeers = new ArrayList<>(peerList.getDeviceList());
+        if (!refreshedPeers.equals(peers)) {
+            peers.clear();
+            peers.addAll(refreshedPeers);
+        }
+
+        if (peers.size() == 0) {
+            //TODO
+        }
+
+    }
+
 }

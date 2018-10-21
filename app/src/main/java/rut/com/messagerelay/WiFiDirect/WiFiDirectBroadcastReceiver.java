@@ -1,22 +1,24 @@
-package rut.com.messagerelay;
+package rut.com.messagerelay.WiFiDirect;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.wifi.p2p.WifiP2pDeviceList;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.util.Log;
 
-public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
+public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
 
     private WifiP2pManager manager;
     private WifiP2pManager.Channel channel;
-    private MainActivity activity;
+    private WiFiDirectService wiFiDirectService;
 
-    public WifiDirectBroadcastReceiver(WifiP2pManager manager, WifiP2pManager.Channel channel,
-                                       MainActivity activity) {
+    public WiFiDirectBroadcastReceiver(WifiP2pManager manager, WifiP2pManager.Channel channel,
+                                       WiFiDirectService wiFiDirectService) {
         super();
         this.manager = manager;
         this.channel = channel;
-        this.activity = activity;
+        this.wiFiDirectService = wiFiDirectService;
     }
 
     @Override
@@ -27,9 +29,9 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
             // the Activity.
             int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-                activity.setIsWifiP2pEnabled(true);
+                wiFiDirectService.setIsWifiP2pEnabled(true);
             } else {
-                activity.setIsWifiP2pEnabled(false);
+                wiFiDirectService.setIsWifiP2pEnabled(false);
             }
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
 
@@ -49,8 +51,15 @@ public class WifiDirectBroadcastReceiver extends BroadcastReceiver {
             // Request available peers from the wifi p2p manager. This is an
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
+            Log.d("Progress", "Peers changed");
             if (manager != null) {
-                manager.requestPeers(channel, activity);
+                Log.d("Progress", "Peers changed/Manager not null");
+                manager.requestPeers(channel, new WifiP2pManager.PeerListListener() {
+                    @Override
+                    public void onPeersAvailable(WifiP2pDeviceList peers) {
+                        Log.d("Progress", "Found Peers");
+                    }
+                });
             }
         }
     }

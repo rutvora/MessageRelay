@@ -19,7 +19,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     private WiFiDirectBroadcastReceiver receiver;
     private WifiP2pManager.Channel channel;
     private WifiP2pManager wifiP2pManager;
-    private boolean isWifiP2pEnabled = false;
+    private boolean isWifiP2pEnabled = true;
     private AppCompatActivity activity;
 
     public WiFiDirectService(AppCompatActivity activity) {
@@ -27,9 +27,9 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     }
 
     public void setup() {
+        setupIntentFilters();
+        setupBroadcastReceiver();
         if (isWifiP2pEnabled) {
-            setupIntentFilters();
-            setupBroadcastReceiver();
             registerLocalService();
             discoverService();
         } else {

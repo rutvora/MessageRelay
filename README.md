@@ -10,7 +10,7 @@ This starts the following functions in the app:
 2. Looking for SOS signals (explained below).
 3. Enabling the user to send an SOS (explained below).
 
-An SOS here is a message that the app will send (repeatedly over local networks, once over the internet) which contains the user's critical information like last ID, last location and time of message.
+An SOS here is a message that the app will send (repeatedly over local networks, once over the internet) which contains the user's critical information like last ID, last location and updatedAt of message.
 
 All the apps will then transmit a detected SOS message to other devices over local network or once over the internet. This makes a relay, till the message reaches the internet.
 

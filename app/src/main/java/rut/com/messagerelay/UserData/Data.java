@@ -1,20 +1,22 @@
 package rut.com.messagerelay.UserData;
 
-public class Data {
-    String uid;
-    String latitude;
-    String longitude;
-    long time;
+import java.io.Serializable;
+import java.util.Date;
 
-    public Data(String uid, String latitude, String longitude, long time) {
-        this.uid = uid;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.time = time;
-    }
+public class Data implements Serializable {
+    public Date updatedAt;
+    //TODO: Name and Picture
+    private String id;
+    private String latitude;
+    private String longitude;
+    private String accuracy;
 
-    public String getString() {
-        return uid + "," + latitude + "," + longitude + "," + time;
+    public Data(String id, double latitude, double longitude, double accuracy, Date updatedAt) {
+        this.id = id;
+        this.latitude = latitude + "";
+        this.longitude = longitude + "";
+        this.accuracy = accuracy + "";
+        this.updatedAt = updatedAt;
     }
 
 }

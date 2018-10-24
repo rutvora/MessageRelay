@@ -17,8 +17,9 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.login);
+        setContentView(R.layout.activity_main);
         azure = new Azure(this);
+        azure.connect();
         client = azure.authenticate('g');       //TODO: Get input from user
     }
 
@@ -33,6 +34,7 @@ public class LoginActivity extends AppCompatActivity {
                     // sign-in succeeded
                     //createAndShowDialog(String.format("You are now signed in - %1$2s", mClient.getCurrentUser().getUserId()), "Success");
                     azure.cacheUserToken(client.getCurrentUser());
+                    MainActivity.id = client.getCurrentUser().getUserId();
                 } else {
                     // sign-in failed, check the error message
                     String errorMessage = result.getErrorMessage();

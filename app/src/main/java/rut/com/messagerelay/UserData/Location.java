@@ -8,37 +8,46 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+
+import java.util.Calendar;
 
 import rut.com.messagerelay.MainActivity;
 
 public class Location implements LocationListener {
 
-    private AppCompatActivity activity;
+    private Context context;
 
-    public Location(AppCompatActivity activity) {
-        this.activity = activity;
+    public Location(Context context) {
+        this.context = context;
     }
 
-    public void setup() {
-        LocationManager locationManager = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
-        if (ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MainActivity.LOCATION_SERVICE_REQUEST);
-        } else {
-
-            if (locationManager != null) {
-                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                    //TODO: Change minTime and minDistance
-                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
-                } else {
-                    activity.startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-                }
+    public void setup(@Nullable AppCompatActivity activity) {
+        LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        if (activity != null) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MainActivity.LOCATION_SERVICE_REQUEST);
             } else {
-                Log.d("Location", "Location manager is null");
-            }
 
+                if (locationManager != null) {
+                    if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+
+                        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60 * 1000, 50, this);
+                    } else {
+                        context.startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                    }
+                } else {
+                    Log.d("Location", "Location manager is null");
+                }
+
+            }
+        } else {
+            if (locationManager != null) {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60 * 1000, 50, this);
+            }
         }
 
     }
@@ -46,7 +55,15 @@ public class Location implements LocationListener {
 
     @Override
     public void onLocationChanged(android.location.Location location) {
-        Log.d("Location", location.getLatitude() + ", " + location.getLongitude() + ", " + location.getAccuracy());     //TODO: Under testing
+        //Log.d("Location", location.getLatitude() + ", " + location.getLongitude() + ", " + location.getAccuracy());     //TODO: Under testing
+        Data data = new Data(MainActivity.id, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+        if (MainActivity.userData.containsKey(MainActivity.id)) {
+            MainActivity.userData.remove(MainActivity.id);
+        }
+        MainActivity.userData.put(MainActivity.id, data);
+        Azure azure = new Azure(context);
+        azure.connect();
+        azure.updateData(data);
     }
 
     @Override

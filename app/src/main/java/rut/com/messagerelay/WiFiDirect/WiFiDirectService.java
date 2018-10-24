@@ -6,12 +6,16 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.Toast;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import rut.com.messagerelay.MainActivity;
+import rut.com.messagerelay.UserData.Azure;
+import rut.com.messagerelay.UserData.Data;
+import rut.com.messagerelay.UserData.DataManipulator;
 
 public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2pManager.DnsSdServiceResponseListener, WifiP2pManager.DnsSdTxtRecordListener {
 
@@ -20,10 +24,10 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     private WifiP2pManager.Channel channel;
     private WifiP2pManager wifiP2pManager;
     private boolean isWifiP2pEnabled = true;
-    private AppCompatActivity activity;
+    private Context context;
 
-    public WiFiDirectService(AppCompatActivity activity) {
-        this.activity = activity;
+    public WiFiDirectService(Context context) {
+        this.context = context;
     }
 
     public void setup() {
@@ -33,7 +37,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
             registerLocalService();
             discoverService();
         } else {
-            Toast.makeText(activity, "WiFi Direct not enabled/available", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "WiFi Direct not enabled/available", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -57,15 +61,15 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     }
 
     private void setupBroadcastReceiver() {
-        wifiP2pManager = (WifiP2pManager) activity.getSystemService(Context.WIFI_P2P_SERVICE);
-        channel = wifiP2pManager.initialize(activity, activity.getMainLooper(), null);
+        wifiP2pManager = (WifiP2pManager) context.getSystemService(Context.WIFI_P2P_SERVICE);
+        channel = wifiP2pManager.initialize(context, context.getMainLooper(), null);
         receiver = new WiFiDirectBroadcastReceiver(wifiP2pManager, channel, this);
-        activity.registerReceiver(receiver, intentFilter);
+        context.registerReceiver(receiver, intentFilter);
     }
 
     private void registerLocalService() {
         HashMap<String, String> record = new HashMap<>();
-        record.put("testdata", "somedata");  //TODO: Fill relevant data
+        record.put("messageRelay", new String(new DataManipulator().getByteArray()));  //TODO: Test this
         WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_test", "_presense._tcp", record);   //TODO: Understand this
         wifiP2pManager.addLocalService(channel, serviceInfo, this);
     }
@@ -77,7 +81,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
 
     @Override
     public void onFailure(int reason) {
-        Toast.makeText(activity, "Error!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Error!", Toast.LENGTH_SHORT).show();
         Log.d("Failure", reason + "");
     }
 
@@ -101,8 +105,24 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
 
     @Override
     public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> txtRecordMap, WifiP2pDevice srcDevice) {
-        //buddies.put(srcDevice.deviceAddress, txtRecordMap.get("testdata"));
-        Log.d(srcDevice.deviceName, txtRecordMap.get("testdata"));
+        //Log.d(srcDevice.deviceName, txtRecordMap.get("testdata"));
         //TODO: handle data receiving
+        Azure azure = new Azure(context);
+        azure.connect();
+        HashMap<String, Data> receivedMap = new DataManipulator().getHashMap(txtRecordMap.get("messageRelay").getBytes());      //TODO: Test this
+        for (String key : receivedMap.keySet()) {
+            Data data = receivedMap.get(key);
+            if (MainActivity.userData.containsKey(key)) {
+                if (MainActivity.userData.get(key).updatedAt.compareTo(data.updatedAt) < 0) {
+                    MainActivity.userData.remove(key);
+                    MainActivity.userData.put(key, data);
+                    //TODO: Set trigger to add/update table
+                    azure.updateData(data);
+                }
+            } else {
+                MainActivity.userData.put(key, data);
+                azure.insertData(data);
+            }
+        }
     }
 }

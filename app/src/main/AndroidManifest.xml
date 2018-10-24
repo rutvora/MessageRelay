@@ -26,6 +26,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <service
+            android:name=".BackgroundServices$CheckEmergencyJob"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service
+            android:name=".BackgroundServices$EmergencySituationJob"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -33,6 +40,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name="com.microsoft.windowsazure.mobileservices.authentication.RedirectUrlActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="easyauth.callback"
+                    android:scheme="{url_scheme_of_your_app}" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".LoginActivity" />
     </application>
 
 </manifest>

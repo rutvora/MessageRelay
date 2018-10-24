@@ -16,7 +16,7 @@ import rut.com.messagerelay.MainActivity;
 
 public class Location implements LocationListener {
 
-    AppCompatActivity activity;
+    private AppCompatActivity activity;
 
     public Location(AppCompatActivity activity) {
         this.activity = activity;

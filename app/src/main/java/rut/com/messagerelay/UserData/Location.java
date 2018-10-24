@@ -46,7 +46,7 @@ public class Location implements LocationListener {
 
     @Override
     public void onLocationChanged(android.location.Location location) {
-        Log.d("Location", "Location Changed");       //TODO: Under testing
+        Log.d("Location", location.getLatitude() + ", " + location.getLongitude() + ", " + location.getAccuracy());     //TODO: Under testing
     }
 
     @Override

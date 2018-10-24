@@ -26,7 +26,6 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation 'com.android.support.constraint:constraint-layout:1.1.3'
-
     //Azure Mobile
     implementation('com.microsoft.azure:azure-mobile-android:3.4.0') {
         exclude group: 'com.android.support'        //Conflict with latest appCompat (this still lives in v23.0.1)

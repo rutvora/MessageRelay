@@ -24,8 +24,8 @@ public class MainActivity extends AppCompatActivity {
         wiFiDirectService.setup();
 
         //Setup fetching location
-        //location = new Location(this);
-        //location.setup();
+        location = new Location(this);
+        location.setup();
 
         Azure azure = new Azure(this);
         azure.connect();

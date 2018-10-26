@@ -13,6 +13,8 @@ import android.widget.Toast;
 import java.util.HashMap;
 import java.util.Map;
 
+import rut.com.messagerelay.UserData.StorageFile;
+
 public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2pManager.DnsSdServiceResponseListener, WifiP2pManager.DnsSdTxtRecordListener {
 
     private final IntentFilter intentFilter = new IntentFilter();
@@ -64,9 +66,10 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     }
 
     private void registerLocalService() {
-        HashMap<String, String> record = new HashMap<>();
-        record.put("testdata", "somedata");  //TODO: Fill relevant data
-        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_test", "_presense._tcp", record);   //TODO: Understand this
+        StorageFile file = new StorageFile();
+        HashMap<String, String> map = new HashMap<>();
+        map.put("messageRelay", file.readFile(file.getFile()));
+        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_test", "_presense._tcp", map);   //TODO: Understand this
         wifiP2pManager.addLocalService(channel, serviceInfo, this);
     }
 
@@ -101,8 +104,9 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
 
     @Override
     public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> txtRecordMap, WifiP2pDevice srcDevice) {
-        //buddies.put(srcDevice.deviceAddress, txtRecordMap.get("testdata"));
-        Log.d(srcDevice.deviceName, txtRecordMap.get("testdata"));
-        //TODO: handle data receiving
+        StorageFile storageFile = new StorageFile();
+        storageFile.updateData(txtRecordMap.get("messageRelay"));
+
+        //TODO: If time remains, filter out repeated beacons
     }
 }

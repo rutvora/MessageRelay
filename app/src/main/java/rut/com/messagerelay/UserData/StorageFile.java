@@ -8,15 +8,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public class StorageFile {
-
-    private AppCompatActivity activity;
-
-    public StorageFile(AppCompatActivity activity) {
-        this.activity = activity;
-    }
 
     public File getFile() {
         File locationData;
@@ -29,7 +24,8 @@ public class StorageFile {
         return locationData;
     }
 
-    public void readFile(File file) {
+    public String readFile(File file) {
+        String content = null;
         try {
             FileInputStream fis = new FileInputStream(file);
             byte[] buffer = new byte[10];
@@ -40,12 +36,12 @@ public class StorageFile {
             }
             fis.close();
 
-            String content = sb.toString();
+            content = sb.toString();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        return content;
     }
 
     public Map<String, Data> parseData(String s) {
@@ -58,15 +54,19 @@ public class StorageFile {
         return map;
     }
 
-    public void updateData(String uid, Data data, Map<String, Data> map) {
-        if (map.containsKey(uid)) {
-            Data d = map.get(uid);
-            if (d.time < data.time) {
-                map.remove(uid);
-                map.put(uid, data);
+    public void updateData(String data) {
+        Map<String, Data> receivedData = parseData(data);
+        Map<String, Data> myData = parseData(readFile(getFile()));
+        for (String uid : receivedData.keySet()) {
+            Data d = receivedData.get(uid);
+            if (myData.containsKey(uid)) {
+                if (d.time > myData.get(uid).time) {
+                    myData.remove(uid);
+                    myData.put(uid, d);
+                }
+            } else {
+                myData.put(uid, d);
             }
-        } else {
-            map.put(uid, data);
         }
     }
 

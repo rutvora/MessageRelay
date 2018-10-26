@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
         final EditText editTextFullname = findViewById(R.id.Name);
         final Button button7 = findViewById(R.id.save);
 
-        editTextFullname.addTextChangedListener(new TextWatcher() {
+        editTextFullname.addTextChangedListener(new TextWatcher() {                 //for disabling and enabling save button
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 

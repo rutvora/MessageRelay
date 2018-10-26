@@ -13,7 +13,8 @@
     <ImageView
         android:id="@+id/photo"
         android:layout_width="match_parent"
-        android:layout_height="150dp"
+        android:layout_height="198dp"
+        android:layout_marginBottom="50dp"
         android:paddingTop="50dp"
         app:srcCompat="@drawable/image"
         tools:ignore="DuplicateIds" />
@@ -25,19 +26,10 @@
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/image"
-        android:layout_width="match_parent"
-        android:layout_height="42dp"
-        android:background="@drawable/ic_launcher_foreground"
-        android:text="Image"
-        android:textSize="18dp" />
-
-
     <EditText
         android:id="@+id/Name"
         android:layout_width="373dp"
-        android:layout_height="73dp"
+        android:layout_height="75dp"
         android:hint="Full Name:"
         android:inputType="text"
         android:textColorHighlight="@drawable/gradient_color"
@@ -46,13 +38,13 @@
 
     <Button
         android:id="@+id/save"
-        android:layout_width="413dp"
-        android:layout_height="182dp"
-        android:background="@drawable/ic_launcher_foreground"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/gradient_color"
+        android:enabled="false"
         android:text="Save "
         android:textSize="20dp"
-        android:textStyle="bold"
-        android:enabled="false"/>
+        android:textStyle="bold" />
 
 </LinearLayout>
 

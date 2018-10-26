@@ -8,15 +8,19 @@ import com.microsoft.azure.storage.blob.CloudBlobClient;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.windowsazure.mobileservices.MobileServiceClient;
+import com.microsoft.windowsazure.mobileservices.MobileServiceException;
 import com.microsoft.windowsazure.mobileservices.authentication.MobileServiceAuthenticationProvider;
 import com.microsoft.windowsazure.mobileservices.authentication.MobileServiceUser;
+import com.microsoft.windowsazure.mobileservices.table.MobileServiceTable;
+import com.microsoft.windowsazure.mobileservices.table.query.QueryOperations;
+import com.microsoft.windowsazure.mobileservices.table.query.QueryOrder;
 import com.microsoft.windowsazure.mobileservices.table.sync.MobileServiceSyncTable;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.net.MalformedURLException;
-
-import rut.com.messagerelay.MainActivity;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class Azure {
 
@@ -38,11 +42,11 @@ public class Azure {
     }
 
     public MobileServiceClient authenticate(char c) {
-        if (!loadUserTokenCache(mClient)) {
+        if (!loadUserTokenCache()) {
             if (c == 'g')   // Sign in using the Google provider.
-                mClient.login(MobileServiceAuthenticationProvider.Google, "", GOOGLE_LOGIN_REQUEST_CODE);
+                mClient.login(MobileServiceAuthenticationProvider.Google, "messageRelay", GOOGLE_LOGIN_REQUEST_CODE);           //TODO: check uri
             else if (c == 'f')  // Sign in using the Facebook provider.
-                mClient.login(MobileServiceAuthenticationProvider.Facebook, "", FACEBOOK_LOGIN_REQUEST_CODE);
+                mClient.login(MobileServiceAuthenticationProvider.Facebook, "messageRelay", FACEBOOK_LOGIN_REQUEST_CODE);
         }
 
         return mClient;
@@ -113,7 +117,7 @@ public class Azure {
         editor.apply();
     }
 
-    private boolean loadUserTokenCache(MobileServiceClient client) {
+    public boolean loadUserTokenCache() {
         SharedPreferences prefs = context.getSharedPreferences(SHAREDPREFFILE, Context.MODE_PRIVATE);
         String userId = prefs.getString(USERIDPREF, null);
         if (userId == null)
@@ -121,10 +125,11 @@ public class Azure {
         String token = prefs.getString(TOKENPREF, null);
         if (token == null)
             return false;
+        StaticData.id = userId;
 
         MobileServiceUser user = new MobileServiceUser(userId);
         user.setAuthenticationToken(token);
-        client.setCurrentUser(user);
+        mClient.setCurrentUser(user);
 
         return true;
     }
@@ -149,13 +154,24 @@ public class Azure {
             CloudBlobContainer container = blobClient.getContainerReference(storageContainer);
 
             // Create or overwrite the blob (with the name "example.jpeg") with contents from a local file.
-            CloudBlockBlob blob = container.getBlockBlobReference(MainActivity.id);
+            CloudBlockBlob blob = container.getBlockBlobReference(StaticData.id);
             File source = new File(imgPath);
             blob.upload(new FileInputStream(source), source.length());
         } catch (Exception e) {
             // Output the stack trace.
             e.printStackTrace();
         }
+    }
+
+    public List<EmergencyTable> getEmergencyZones() {
+        MobileServiceTable<EmergencyTable> table = mClient.getTable("emergency", EmergencyTable.class);
+        List<EmergencyTable> results = null;
+        try {
+            results = table.execute().get();
+        } catch (InterruptedException | ExecutionException | MobileServiceException e) {
+            e.printStackTrace();
+        }
+        return results;
     }
 
     public void insertData(Data data) {
@@ -166,5 +182,20 @@ public class Azure {
     public void updateData(Data data) {
         userDataTable = mClient.getSyncTable("userData", Data.class);
         userDataTable.update(data);
+    }
+
+    public boolean loadData() {                 //TODO: call and load Data from this
+        MobileServiceSyncTable<Data> table = mClient.getSyncTable("userData", Data.class);
+        List<Data> results;
+        try {
+            results = table.read(QueryOperations.add().orderBy("id", QueryOrder.Ascending)).get();
+            for (Data result : results) {
+                StaticData.userData.put(result.id, result);
+            }
+            return true;
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }

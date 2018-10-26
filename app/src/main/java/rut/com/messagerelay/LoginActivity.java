@@ -8,6 +8,7 @@ import com.microsoft.windowsazure.mobileservices.MobileServiceActivityResult;
 import com.microsoft.windowsazure.mobileservices.MobileServiceClient;
 
 import rut.com.messagerelay.UserData.Azure;
+import rut.com.messagerelay.UserData.StaticData;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -17,7 +18,7 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.login);
         azure = new Azure(this);
         azure.connect();
         client = azure.authenticate('g');       //TODO: Get input from user
@@ -34,7 +35,9 @@ public class LoginActivity extends AppCompatActivity {
                     // sign-in succeeded
                     //createAndShowDialog(String.format("You are now signed in - %1$2s", mClient.getCurrentUser().getUserId()), "Success");
                     azure.cacheUserToken(client.getCurrentUser());
-                    MainActivity.id = client.getCurrentUser().getUserId();
+                    StaticData.id = client.getCurrentUser().getUserId();
+                    Intent intent = new Intent(this, MainActivity.class);       //TODO: Maybe call updateUserProfile?
+                    startActivity(intent);
                 } else {
                     // sign-in failed, check the error message
                     String errorMessage = result.getErrorMessage();

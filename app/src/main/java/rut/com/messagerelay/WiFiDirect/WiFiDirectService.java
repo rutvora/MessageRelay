@@ -1,21 +1,23 @@
 package rut.com.messagerelay.WiFiDirect;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import rut.com.messagerelay.MainActivity;
 import rut.com.messagerelay.UserData.Azure;
 import rut.com.messagerelay.UserData.Data;
 import rut.com.messagerelay.UserData.DataManipulator;
+import rut.com.messagerelay.UserData.StaticData;
 
 public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2pManager.DnsSdServiceResponseListener, WifiP2pManager.DnsSdTxtRecordListener {
 
@@ -23,7 +25,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     private WiFiDirectBroadcastReceiver receiver;
     private WifiP2pManager.Channel channel;
     private WifiP2pManager wifiP2pManager;
-    private boolean isWifiP2pEnabled = true;
+    private boolean isWifiP2pEnabled = true;                //TODO: enable wifi p2p if not (see line 44)
     private Context context;
 
     public WiFiDirectService(Context context) {
@@ -38,6 +40,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
             discoverService();
         } else {
             Toast.makeText(context, "WiFi Direct not enabled/available", Toast.LENGTH_SHORT).show();
+            context.startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));           //TODO: Check
         }
     }
 
@@ -112,15 +115,15 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
         HashMap<String, Data> receivedMap = new DataManipulator().getHashMap(txtRecordMap.get("messageRelay").getBytes());      //TODO: Test this
         for (String key : receivedMap.keySet()) {
             Data data = receivedMap.get(key);
-            if (MainActivity.userData.containsKey(key)) {
-                if (MainActivity.userData.get(key).updatedAt.compareTo(data.updatedAt) < 0) {
-                    MainActivity.userData.remove(key);
-                    MainActivity.userData.put(key, data);
-                    //TODO: Set trigger to add/update table
+            if (StaticData.userData.containsKey(key)) {
+                if (StaticData.userData.get(key).updatedAt.compareTo(data.updatedAt) < 0) {
+                    StaticData.userData.remove(key);
+                    StaticData.userData.put(key, data);
+
                     azure.updateData(data);
                 }
             } else {
-                MainActivity.userData.put(key, data);
+                StaticData.userData.put(key, data);
                 azure.insertData(data);
             }
         }

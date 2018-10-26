@@ -35,7 +35,7 @@ public class Location implements LocationListener {
                 if (locationManager != null) {
                     if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
 
-                        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60 * 1000, 50, this);
+                        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30 * 60 * 1000, 50, this);
                     } else {
                         context.startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
                     }
@@ -46,7 +46,7 @@ public class Location implements LocationListener {
             }
         } else {
             if (locationManager != null) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60 * 1000, 50, this);
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30 * 60 * 1000, 50, this);
             }
         }
 
@@ -55,12 +55,12 @@ public class Location implements LocationListener {
 
     @Override
     public void onLocationChanged(android.location.Location location) {
-        //Log.d("Location", location.getLatitude() + ", " + location.getLongitude() + ", " + location.getAccuracy());     //TODO: Under testing
-        Data data = new Data(MainActivity.id, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
-        if (MainActivity.userData.containsKey(MainActivity.id)) {
-            MainActivity.userData.remove(MainActivity.id);
+        //Log.d("Location", location.getLatitude() + ", " + location.getLongitude() + ", " + location.getAccuracy());
+        Data data = new Data(StaticData.id, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+        if (StaticData.userData.containsKey(StaticData.id)) {
+            StaticData.userData.remove(StaticData.id);
         }
-        MainActivity.userData.put(MainActivity.id, data);
+        StaticData.userData.put(StaticData.id, data);
         Azure azure = new Azure(context);
         azure.connect();
         azure.updateData(data);

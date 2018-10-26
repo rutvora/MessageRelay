@@ -6,10 +6,10 @@ import java.util.Date;
 public class Data implements Serializable {
     public Date updatedAt;
     //TODO: Name and Picture
-    private String id;
-    private String latitude;
-    private String longitude;
-    private String accuracy;
+    public String id;
+    public String latitude;
+    public String longitude;
+    public String accuracy;
 
     public Data(String id, double latitude, double longitude, double accuracy, Date updatedAt) {
         this.id = id;

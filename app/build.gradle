@@ -29,9 +29,17 @@ dependencies {
 
     //Azure Mobile
     implementation('com.microsoft.azure:azure-mobile-android:3.4.0') {
-        exclude group: 'com.android.support'        //Conflict with latest appCompat (this still lives in v23.0.1)
+        exclude group: 'com.android.support'
+        //Conflict with latest appCompat (this still lives in v23.0.1)
     }
     implementation 'com.microsoft.azure.android:azure-storage-android:2.0.0@aar'
+
+    implementation('com.myhexaville:smart-image-picker:1.0.4') {
+
+        exclude group: 'com.android.support'
+        //Conflict with latest appCompat (this still lives in v23.0.1)
+
+    }
 
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'

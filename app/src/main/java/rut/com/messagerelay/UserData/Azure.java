@@ -1,120 +1,76 @@
 package rut.com.messagerelay.UserData;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.util.Log;
 
+import com.google.gson.JsonObject;
 import com.microsoft.azure.storage.CloudStorageAccount;
+import com.microsoft.azure.storage.StorageException;
 import com.microsoft.azure.storage.blob.CloudBlobClient;
 import com.microsoft.azure.storage.blob.CloudBlobContainer;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import com.microsoft.windowsazure.mobileservices.MobileServiceClient;
 import com.microsoft.windowsazure.mobileservices.MobileServiceException;
-import com.microsoft.windowsazure.mobileservices.authentication.MobileServiceAuthenticationProvider;
 import com.microsoft.windowsazure.mobileservices.authentication.MobileServiceUser;
+import com.microsoft.windowsazure.mobileservices.table.MobileServicePreconditionFailedExceptionJson;
 import com.microsoft.windowsazure.mobileservices.table.MobileServiceTable;
 import com.microsoft.windowsazure.mobileservices.table.query.QueryOperations;
 import com.microsoft.windowsazure.mobileservices.table.query.QueryOrder;
+import com.microsoft.windowsazure.mobileservices.table.sync.MobileServiceSyncContext;
 import com.microsoft.windowsazure.mobileservices.table.sync.MobileServiceSyncTable;
+import com.microsoft.windowsazure.mobileservices.table.sync.localstore.ColumnDataType;
+import com.microsoft.windowsazure.mobileservices.table.sync.localstore.SQLiteLocalStore;
+import com.microsoft.windowsazure.mobileservices.table.sync.operations.RemoteTableOperationProcessor;
+import com.microsoft.windowsazure.mobileservices.table.sync.operations.TableOperation;
+import com.microsoft.windowsazure.mobileservices.table.sync.push.MobileServicePushCompletionResult;
+import com.microsoft.windowsazure.mobileservices.table.sync.synchandler.MobileServiceSyncHandler;
+import com.microsoft.windowsazure.mobileservices.table.sync.synchandler.MobileServiceSyncHandlerException;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.InvalidKeyException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 public class Azure {
 
-    public static final int GOOGLE_LOGIN_REQUEST_CODE = 1;
-    public static final int FACEBOOK_LOGIN_REQUEST_CODE = 2;
     private static final String SHAREDPREFFILE = "tokenCache";
     private static final String USERIDPREF = "uid";
     private static final String TOKENPREF = "token";
-    private static final String storageURL = "BLOB_STORAGE_URL";
-    private static final String storageContainer = "messageRelay";
+    private static final String NAMEPREF = "name";
+    private static final String IMAGEPREF = "imageUri";
+    private static final String storageContainer = "messagerelay";
     private static final String storageConnectionString
-            = "DefaultEndpointsProtocol=https;AccountName=usercontents;AccountKey=Zfk4hcBWJk7W9v+THWf6LOP0OGWQy1aIvupMKiH6TR6TQsxex7ZWi3GHiHIkT11YnK5wmJWHz1SmXiN5YT7ZXQ==;EndpointSuffix=core.windows.net";
+            = "DefaultEndpointsProtocol=https;AccountName=usercontents;AccountKey=WpPxpNXcNBKMkL7TNjbN0thJvFDNI2ohVkPL73jrfbmXlbsL4VKzuuyxEDLjHj1hqDnm8sBU/omwJnN249TXeg==;EndpointSuffix=core.windows.net";
     private MobileServiceSyncTable<Data> userDataTable;
-    private MobileServiceClient mClient;
+
+    public MobileServiceClient mobileServiceClient;
     private Context context;
 
     public Azure(Context context) {
         this.context = context;
     }
 
-    public MobileServiceClient authenticate(char c) {
-        if (!loadUserTokenCache()) {
-            if (c == 'g')   // Sign in using the Google provider.
-                mClient.login(MobileServiceAuthenticationProvider.Google, "messageRelay", GOOGLE_LOGIN_REQUEST_CODE);           //TODO: check uri
-            else if (c == 'f')  // Sign in using the Facebook provider.
-                mClient.login(MobileServiceAuthenticationProvider.Facebook, "messageRelay", FACEBOOK_LOGIN_REQUEST_CODE);
-        }
 
-        return mClient;
-    }
-
-    /*
-    public void test() {
-        TodoItem item = new TodoItem();
-        item.text = "Awesome item";
-        item.id = "Some ID";
-        userDataTable = mClient.getSyncTable("TodoItem", TodoItem.class);
-        // Offline Sync
-
-        try {
-            final List<TodoItem> results = refreshItemsFromMobileServiceTableSyncTable();
-        } catch (ExecutionException | InterruptedException e) {
-            e.printStackTrace();
-        }
-
-
-
-        //ListenableFuture<TodoItem> listenableFuture =
-        mClient.getSyncTable(TodoItem.class).insert(item);
-
-
-        listenableFuture.addListener(new Runnable() {
-            @Override
-            public void run() {
-                Log.d("Azure", "Update Successful");
-            }
-        }, MoreExecutors.directExecutor());
-
-    }
-
-
-    private List<TodoItem> refreshItemsFromMobileServiceTableSyncTable() throws ExecutionException, InterruptedException {
-        //sync the data
-        sync().get();
-        Query query = QueryOperations.field("complete").
-                eq(val(false));
-        return userDataTable.read(query).get();
-    }
-
-
-    private static AsyncTask<Void, Void, Void> sync() {
-        AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... params) {
-                try {
-                    MobileServiceSyncContext syncContext = mClient.getSyncContext();
-                    syncContext.push().get();
-                    userDataTable.pull(null).get();
-                } catch (final Exception e) {
-                    createAndShowDialogFromTask(e, "Error");
-                }
-                return null;
-            }
-        };
-        return runAsyncTask(task);
-    }
-    */
-
-    public void cacheUserToken(MobileServiceUser user) {
+    private void cacheUserToken(MobileServiceUser user) {
         SharedPreferences prefs = context.getSharedPreferences(SHAREDPREFFILE, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(USERIDPREF, user.getUserId());
         editor.putString(TOKENPREF, user.getAuthenticationToken());
+        editor.putString(NAMEPREF, StaticData.name);
+        editor.putString(IMAGEPREF, StaticData.imageUri.toString());
         editor.apply();
+        loadUserTokenCache();
     }
 
     public boolean loadUserTokenCache() {
@@ -126,45 +82,65 @@ public class Azure {
         if (token == null)
             return false;
         StaticData.id = userId;
-
+        StaticData.name = prefs.getString(NAMEPREF, null);
+        try {
+            StaticData.imageUri = new URI("https://www.google.com");    //prefs.getString(IMAGEPREF, null)
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
         MobileServiceUser user = new MobileServiceUser(userId);
         user.setAuthenticationToken(token);
-        mClient.setCurrentUser(user);
+        mobileServiceClient.setCurrentUser(user);
 
         return true;
     }
 
     public void connect() {
         try {
-            mClient = new MobileServiceClient("https://messagerelay.azurewebsites.net", context);
+            mobileServiceClient = new MobileServiceClient("https://messagerelay.azurewebsites.net", context);
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
     }
 
-    protected void storeImageInBlobStorage(String imgPath) {
-        try {
-            // Retrieve storage account from connection-string.
-            CloudStorageAccount storageAccount = CloudStorageAccount.parse(storageConnectionString);
+    public void storeImageInBlobStorage(final Uri imageuri) {
+        Thread t = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    // Retrieve storage account from connection-string.
+                    CloudStorageAccount storageAccount = CloudStorageAccount.parse(storageConnectionString);
 
-            // Create the blob client.
-            CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
+                    // Create the blob client.
+                    CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
 
-            // Retrieve reference to a previously created container.
-            CloudBlobContainer container = blobClient.getContainerReference(storageContainer);
+                    // Retrieve reference to a previously created container.
+                    CloudBlobContainer container = blobClient.getContainerReference(storageContainer);
+                    container.createIfNotExists();
 
-            // Create or overwrite the blob (with the name "example.jpeg") with contents from a local file.
-            CloudBlockBlob blob = container.getBlockBlobReference(StaticData.id);
-            File source = new File(imgPath);
-            blob.upload(new FileInputStream(source), source.length());
-        } catch (Exception e) {
-            // Output the stack trace.
-            e.printStackTrace();
-        }
+                    // Create or overwrite the blob (with the name "example.jpeg") with contents from a local file.
+                    CloudBlockBlob blob = container.getBlockBlobReference(StaticData.id);
+                    InputStream imageStream = Objects.requireNonNull(context.getContentResolver().openInputStream(imageuri));
+                    long length = 0;
+                    while (imageStream.available() > 0) {
+                        length += imageStream.available();
+                        imageStream.read(new byte[imageStream.available()]);
+                    }
+                    blob.upload(Objects.requireNonNull(context.getContentResolver().openInputStream(imageuri)), length);
+                    StaticData.imageUri = blob.getUri();
+                    cacheUserToken(mobileServiceClient.getCurrentUser());
+
+                } catch (StorageException | IOException | InvalidKeyException | URISyntaxException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        t.start();
+
     }
 
     public List<EmergencyTable> getEmergencyZones() {
-        MobileServiceTable<EmergencyTable> table = mClient.getTable("emergency", EmergencyTable.class);
+        MobileServiceTable<EmergencyTable> table = mobileServiceClient.getTable("emergency", EmergencyTable.class);
         List<EmergencyTable> results = null;
         try {
             results = table.execute().get();
@@ -175,27 +151,110 @@ public class Azure {
     }
 
     public void insertData(Data data) {
-        userDataTable = mClient.getSyncTable("userData", Data.class);
+        userDataTable = mobileServiceClient.getSyncTable("userData", Data.class);
         userDataTable.insert(data);
     }
 
     public void updateData(Data data) {
-        userDataTable = mClient.getSyncTable("userData", Data.class);
+        userDataTable = mobileServiceClient.getSyncTable("userData", Data.class);
         userDataTable.update(data);
     }
 
     public boolean loadData() {                 //TODO: call and load Data from this
-        MobileServiceSyncTable<Data> table = mClient.getSyncTable("userData", Data.class);
+        MobileServiceSyncTable<Data> table = mobileServiceClient.getSyncTable("userData", Data.class);
         List<Data> results;
         try {
-            results = table.read(QueryOperations.add().orderBy("id", QueryOrder.Ascending)).get();
-            for (Data result : results) {
-                StaticData.userData.put(result.id, result);
+            if (table != null) {
+                Log.d("loadData", "Not Null table " + table.getName());
+                sync(table).get();
+                Log.d("Shit debugger", "Till here");
+                results = table.read(QueryOperations.add().orderBy("id", QueryOrder.Ascending)).get();
+
+                for (Data result : results) {
+                    Log.d("Data", result.id + result.name);
+                    StaticData.userData.put(result.id, result);
+                }
             }
             return true;
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    private AsyncTask<Void, Void, Void> sync(final MobileServiceSyncTable<Data> table) {
+        @SuppressLint("StaticFieldLeak") AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... params) {
+                try {
+                    SQLiteLocalStore localStore = new SQLiteLocalStore(mobileServiceClient.getContext(), "userData", null, 1);
+                    MobileServiceSyncHandler handler = new ConflictResolvingSyncHandler();
+
+                    Map<String, ColumnDataType> tableDefinition = new HashMap<>();
+                    tableDefinition.put("id", ColumnDataType.String);
+                    tableDefinition.put("latitude", ColumnDataType.String);
+                    tableDefinition.put("longitude", ColumnDataType.String);
+                    tableDefinition.put("accuracy", ColumnDataType.String);
+                    tableDefinition.put("name", ColumnDataType.String);
+                    tableDefinition.put("imageUri", ColumnDataType.String);
+
+                    localStore.defineTable("userData", tableDefinition);
+                    MobileServiceSyncContext syncContext = mobileServiceClient.getSyncContext();
+
+                    syncContext.initialize(localStore, handler).get();
+                    syncContext.push().get();
+                    table.pull(null).get();
+                    Log.d("AsyncTask", "Stuck on statement before this");
+                } catch (final Exception e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+        };
+        return task.execute();
+    }
+
+    private class ConflictResolvingSyncHandler implements MobileServiceSyncHandler {
+
+        @Override
+        public JsonObject executeTableOperation(
+                RemoteTableOperationProcessor processor, TableOperation operation)
+                throws MobileServiceSyncHandlerException {
+
+            MobileServicePreconditionFailedExceptionJson ex = null;
+            JsonObject result = null;
+            try {
+                result = operation.accept(processor);
+            } catch (MobileServicePreconditionFailedExceptionJson e) {
+                ex = e;
+            } catch (Throwable e) {
+                ex = (MobileServicePreconditionFailedExceptionJson) e.getCause();
+            }
+
+            if (ex != null) {
+                // A conflict was detected; let's force the server to "win"
+                // by discarding the client version of the item
+                // Other policies could be used, such as prompt the user for
+                // which version to maintain.
+                JsonObject serverItem = ex.getValue();
+
+                if (serverItem == null) {
+                    // Item not returned in the exception, retrieving it from the server
+                    try {
+                        serverItem = mobileServiceClient.getSyncTable(operation.getTableName()).lookUp(operation.getItemId()).get();
+                    } catch (Exception e) {
+                        throw new MobileServiceSyncHandlerException(e);
+                    }
+                }
+
+                result = serverItem;
+            }
+
+            return result;
+        }
+
+        @Override
+        public void onPushComplete(MobileServicePushCompletionResult result) {
         }
     }
 }

@@ -1,5 +1,6 @@
 package rut.com.messagerelay;
 
+import android.annotation.SuppressLint;
 import android.app.job.JobInfo;
 import android.app.job.JobParameters;
 import android.app.job.JobScheduler;
@@ -7,9 +8,11 @@ import android.app.job.JobService;
 import android.content.ComponentName;
 import android.content.Context;
 import android.location.LocationManager;
+import android.util.Log;
 
 import java.util.Calendar;
 import java.util.List;
+import java.util.Objects;
 
 import rut.com.messagerelay.UserData.Azure;
 import rut.com.messagerelay.UserData.Data;
@@ -22,8 +25,10 @@ public class BackgroundServices {
     static void scheduleJobCheckEmergency(Context context) {
         ComponentName serviceComponent = new ComponentName(context, CheckEmergencyJob.class);
         JobInfo.Builder builder = new JobInfo.Builder(0, serviceComponent);
-        builder.setMinimumLatency(3600000);
-        builder.setOverrideDeadline(3 * 60 * 60 * 1000);
+        /*builder.setMinimumLatency(60 * 60 * 1000);
+        builder.setOverrideDeadline(3 * 60 * 60 * 1000);*/
+        builder.setMinimumLatency(1000);
+        builder.setOverrideDeadline(2000);
 
         JobScheduler jobScheduler;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -63,37 +68,46 @@ public class BackgroundServices {
         }
     }
 
-    public class CheckEmergencyJob extends JobService {
+    public static class CheckEmergencyJob extends JobService {
 
+        @SuppressLint("MissingPermission")
         @Override
         public boolean onStartJob(JobParameters params) {
-            LocationManager locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-            android.location.Location location = null;
-            if (locationManager != null) {
-                location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            }
-            Data data = new Data(StaticData.id, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
-            if (StaticData.userData.containsKey(StaticData.id)) {
-                StaticData.userData.remove(StaticData.id);
-            }
-            StaticData.userData.put(StaticData.id, data);
-            Azure azure = new Azure(this);
-            azure.connect();
-            azure.updateData(data);
+            Thread thread = new Thread() {
+                @Override
+                public void run() {
+                    Log.d("CheckEmergencyJob", "Ran");
+                    LocationManager locationManager = (LocationManager) CheckEmergencyJob.this.getSystemService(Context.LOCATION_SERVICE);
+                    android.location.Location location = null;
+                    if (locationManager != null) {
+                        location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    }
+                    Data data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, Objects.requireNonNull(location).getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+                    if (StaticData.userData.containsKey(StaticData.id)) {
+                        StaticData.userData.remove(StaticData.id);
+                    }
+                    StaticData.userData.put(StaticData.id, data);
+                    Azure azure = new Azure(CheckEmergencyJob.this);
+                    azure.connect();
+                    azure.updateData(data);
 
-            List<EmergencyTable> emergencyZones = azure.getEmergencyZones();
-            float[] results = new float[3];
-            for (EmergencyTable table : emergencyZones) {
-                android.location.Location.distanceBetween(
-                        Double.parseDouble(table.latitude),
-                        Double.parseDouble(table.longitude),
-                        Double.parseDouble(StaticData.userData.get(StaticData.id).latitude),
-                        Double.parseDouble(StaticData.userData.get(StaticData.id).longitude),
-                        results);
-                if (results[0] < Double.parseDouble(table.radius)) {
-                    scheduleJobEmergencySituation(this);
+                    List<EmergencyTable> emergencyZones = azure.getEmergencyZones();
+                    float[] results = new float[3];
+                    for (EmergencyTable table : emergencyZones) {
+                        android.location.Location.distanceBetween(
+                                Double.parseDouble(table.latitude),
+                                Double.parseDouble(table.longitude),
+                                Double.parseDouble(StaticData.userData.get(StaticData.id).latitude),
+                                Double.parseDouble(StaticData.userData.get(StaticData.id).longitude),
+                                results);
+                        if (results[0] < Double.parseDouble(table.radius)) {
+                            scheduleJobEmergencySituation(CheckEmergencyJob.this);
+                        }
+                    }
                 }
-            }
+            };
+            thread.start();
+
             return true;
         }
 
@@ -103,10 +117,11 @@ public class BackgroundServices {
         }
     }
 
-    public class EmergencySituationJob extends JobService {
+    public static class EmergencySituationJob extends JobService {
 
         @Override
         public boolean onStartJob(JobParameters params) {
+            Log.d("EmergencySituationJob", "Ran");
             //TODO: Start relay
             //Setup WiFiDirect
             WiFiDirectService wiFiDirectService = new WiFiDirectService(this);

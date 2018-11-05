@@ -56,7 +56,7 @@ public class Location implements LocationListener {
     @Override
     public void onLocationChanged(android.location.Location location) {
         //Log.d("Location", location.getLatitude() + ", " + location.getLongitude() + ", " + location.getAccuracy());
-        Data data = new Data(StaticData.id, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+        Data data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
         if (StaticData.userData.containsKey(StaticData.id)) {
             StaticData.userData.remove(StaticData.id);
         }

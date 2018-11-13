@@ -10,9 +10,10 @@ import android.content.Context;
 import android.location.LocationManager;
 import android.util.Log;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Objects;
 
 import rut.com.messagerelay.UserData.Azure;
 import rut.com.messagerelay.UserData.Data;
@@ -76,20 +77,28 @@ public class BackgroundServices {
             Thread thread = new Thread() {
                 @Override
                 public void run() {
-                    Log.d("CheckEmergencyJob", "Ran");
+                    Log.d("CheckEmergencyJob", "Start");
                     LocationManager locationManager = (LocationManager) CheckEmergencyJob.this.getSystemService(Context.LOCATION_SERVICE);
                     android.location.Location location = null;
                     if (locationManager != null) {
                         location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                     }
-                    Data data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, Objects.requireNonNull(location).getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+                    //Data data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+                    Data data = null;
+                    try {
+                        data = new Data("testID1", "test user", new URI("https://www.google.com"), 0.0, 0.0, 0.0, Calendar.getInstance().getTime());
+                    } catch (URISyntaxException e) {
+                        e.printStackTrace();
+                    }
                     if (StaticData.userData.containsKey(StaticData.id)) {
                         StaticData.userData.remove(StaticData.id);
                     }
                     StaticData.userData.put(StaticData.id, data);
                     Azure azure = new Azure(CheckEmergencyJob.this);
-                    azure.connect();
+                    azure.setup();
                     azure.updateData(data);
+
+                    Log.d("CheckEmergencyJob", "Data updated");
 
                     List<EmergencyTable> emergencyZones = azure.getEmergencyZones();
                     float[] results = new float[3];
@@ -103,6 +112,7 @@ public class BackgroundServices {
                         if (results[0] < Double.parseDouble(table.radius)) {
                             scheduleJobEmergencySituation(CheckEmergencyJob.this);
                         }
+                        Log.d("CheckEmergencyJob", "End");
                     }
                 }
             };

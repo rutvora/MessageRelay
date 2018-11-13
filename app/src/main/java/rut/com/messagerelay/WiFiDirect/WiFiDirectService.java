@@ -111,7 +111,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
         //Log.d(srcDevice.deviceName, txtRecordMap.get("testdata"));
         //TODO: handle data receiving
         Azure azure = new Azure(context);
-        azure.connect();
+        azure.setup();
         HashMap<String, Data> receivedMap = new DataManipulator().getHashMap(txtRecordMap.get("messageRelay").getBytes());      //TODO: Test this
         for (String key : receivedMap.keySet()) {
             Data data = receivedMap.get(key);

@@ -60,7 +60,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         ImageButton google = findViewById(R.id.google);
         google.setOnClickListener(this);
         azure = new Azure(this);
-        azure.connect();
+        azure.setup();
     }
 
     @Override
@@ -168,6 +168,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             public void onSuccess(MobileServiceUser user) {
                 Log.d("Azure login", "Login Complete");
                 changeContent();
+                StaticData.id = user.getUserId();
             }
         });
     }
@@ -194,8 +195,8 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             StaticData.name = name;
             azure.storeImageInBlobStorage(imageUri);
 
-            //Intent intent = new Intent(this, MainActivity.class);
-            //startActivity(intent);
+            Intent intent = new Intent(this, MainActivity.class);
+            startActivity(intent);
         }
 
     }

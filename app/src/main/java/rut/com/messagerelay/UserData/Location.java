@@ -62,7 +62,7 @@ public class Location implements LocationListener {
         }
         StaticData.userData.put(StaticData.id, data);
         Azure azure = new Azure(context);
-        azure.connect();
+        azure.setup();
         azure.updateData(data);
     }
 

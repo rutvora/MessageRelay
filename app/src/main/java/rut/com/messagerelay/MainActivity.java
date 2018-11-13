@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Azure azure = new Azure(this);
-        azure.connect();
+        azure.setup();
         if (!azure.loadUserTokenCache()) {
             Intent intent = new Intent(this, LoginActivity.class);
             startActivity(intent);
@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
 
             if (!azure.loadData()) {
                 Toast.makeText(this, "Error loading dataset", Toast.LENGTH_SHORT).show();
+            } else {
+                BackgroundServices.scheduleJobCheckEmergency(this);
             }
         }
     }

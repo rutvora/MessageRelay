@@ -5,8 +5,12 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.JsonObject;
 import com.microsoft.azure.storage.CloudStorageAccount;
 import com.microsoft.azure.storage.StorageException;
@@ -18,8 +22,6 @@ import com.microsoft.windowsazure.mobileservices.MobileServiceException;
 import com.microsoft.windowsazure.mobileservices.authentication.MobileServiceUser;
 import com.microsoft.windowsazure.mobileservices.table.MobileServicePreconditionFailedExceptionJson;
 import com.microsoft.windowsazure.mobileservices.table.MobileServiceTable;
-import com.microsoft.windowsazure.mobileservices.table.query.QueryOperations;
-import com.microsoft.windowsazure.mobileservices.table.query.QueryOrder;
 import com.microsoft.windowsazure.mobileservices.table.sync.MobileServiceSyncContext;
 import com.microsoft.windowsazure.mobileservices.table.sync.MobileServiceSyncTable;
 import com.microsoft.windowsazure.mobileservices.table.sync.localstore.ColumnDataType;
@@ -95,9 +97,16 @@ public class Azure {
         return true;
     }
 
-    public void connect() {
+    public void setup() {
         try {
             mobileServiceClient = new MobileServiceClient("https://messagerelay.azurewebsites.net", context);
+
+            userDataTable = mobileServiceClient.getSyncTable("userData", Data.class);
+            try {
+                sync(userDataTable).get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
@@ -151,24 +160,82 @@ public class Azure {
     }
 
     public void insertData(Data data) {
-        userDataTable = mobileServiceClient.getSyncTable("userData", Data.class);
-        userDataTable.insert(data);
+        ListenableFuture<Data> future = userDataTable.insert(data);
+        Futures.addCallback(future, new FutureCallback<Data>() {
+            @Override
+            public void onSuccess(@Nullable Data result) {
+                Log.d("Insert Data", "Success");
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                t.printStackTrace();
+            }
+        });
+        Log.d("insertData", "trying to sync");
+        ListenableFuture<Void> pushFuture = mobileServiceClient.getSyncContext().push();
+        Futures.addCallback(pushFuture, new FutureCallback<Void>() {
+            @Override
+            public void onSuccess(@Nullable Void result) {
+                Log.d("Insert Push", "Successful");
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                Log.d("Insert Push", "Failed");
+                t.printStackTrace();
+            }
+        });
+        try {
+            userDataTable.pull(null).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        Log.d("insertData", "succeeded");
+
     }
 
     public void updateData(Data data) {
-        userDataTable = mobileServiceClient.getSyncTable("userData", Data.class);
-        userDataTable.update(data);
+        ListenableFuture<Void> future = userDataTable.update(data);
+        Futures.addCallback(future, new FutureCallback<Void>() {
+            @Override
+            public void onSuccess(@Nullable Void result) {
+                Log.d("Update Data", "Successful");
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                Log.d("Update Data", "Error");
+                t.printStackTrace();
+            }
+        });
+        ListenableFuture<Void> pushFuture = mobileServiceClient.getSyncContext().push();
+        Futures.addCallback(pushFuture, new FutureCallback<Void>() {
+            @Override
+            public void onSuccess(@Nullable Void result) {
+                Log.d("Update Push", "Successful");
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                Log.d("Update Push", "Failed");
+                t.printStackTrace();
+            }
+        });
+        try {
+            userDataTable.pull(null).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
     }
 
     public boolean loadData() {                 //TODO: call and load Data from this
-        MobileServiceSyncTable<Data> table = mobileServiceClient.getSyncTable("userData", Data.class);
         List<Data> results;
         try {
-            if (table != null) {
-                Log.d("loadData", "Not Null table " + table.getName());
-                sync(table).get();
-                Log.d("Shit debugger", "Till here");
-                results = table.read(QueryOperations.add().orderBy("id", QueryOrder.Ascending)).get();
+            if (userDataTable != null) {
+                Log.d("loadData", "Not Null table " + userDataTable.getName());
+                results = userDataTable.read(null).get();   //QueryOperations.add().orderBy("id", QueryOrder.Ascending)
+                Log.d("Shit debugger", results.size() + "");
 
                 for (Data result : results) {
                     Log.d("Data", result.id + result.name);
@@ -197,14 +264,28 @@ public class Azure {
                     tableDefinition.put("accuracy", ColumnDataType.String);
                     tableDefinition.put("name", ColumnDataType.String);
                     tableDefinition.put("imageUri", ColumnDataType.String);
+                    tableDefinition.put("updatedAt", ColumnDataType.Date);
 
                     localStore.defineTable("userData", tableDefinition);
                     MobileServiceSyncContext syncContext = mobileServiceClient.getSyncContext();
 
                     syncContext.initialize(localStore, handler).get();
-                    syncContext.push().get();
-                    table.pull(null).get();
-                    Log.d("AsyncTask", "Stuck on statement before this");
+                    ListenableFuture<Void> future = syncContext.push();
+                    Futures.addCallback(future, new FutureCallback<Void>() {
+                        @Override
+                        public void onSuccess(@Nullable Void result) {
+                            Log.d("Sync", "Completed");
+                        }
+
+                        @Override
+                        public void onFailure(Throwable t) {
+                            Log.d("Sync", "Error");
+                            t.printStackTrace();
+                        }
+                    });
+                    future.get();
+                    Log.d("Sync", "Didn't reach here");
+                    table.pull(null);
                 } catch (final Exception e) {
                     e.printStackTrace();
                 }

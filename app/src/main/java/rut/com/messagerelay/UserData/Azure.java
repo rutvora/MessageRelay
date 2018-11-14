@@ -1,10 +1,13 @@
 package rut.com.messagerelay.UserData;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -25,6 +28,7 @@ import com.microsoft.windowsazure.mobileservices.table.MobileServiceTable;
 import com.microsoft.windowsazure.mobileservices.table.sync.MobileServiceSyncContext;
 import com.microsoft.windowsazure.mobileservices.table.sync.MobileServiceSyncTable;
 import com.microsoft.windowsazure.mobileservices.table.sync.localstore.ColumnDataType;
+import com.microsoft.windowsazure.mobileservices.table.sync.localstore.MobileServiceLocalStoreException;
 import com.microsoft.windowsazure.mobileservices.table.sync.localstore.SQLiteLocalStore;
 import com.microsoft.windowsazure.mobileservices.table.sync.operations.RemoteTableOperationProcessor;
 import com.microsoft.windowsazure.mobileservices.table.sync.operations.TableOperation;
@@ -44,6 +48,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
+import rut.com.messagerelay.MainActivity;
+
 public class Azure {
 
     private static final String SHAREDPREFFILE = "tokenCache";
@@ -58,6 +64,7 @@ public class Azure {
 
     public MobileServiceClient mobileServiceClient;
     private Context context;
+    private MobileServiceSyncContext syncContext;
 
     public Azure(Context context) {
         this.context = context;
@@ -77,16 +84,28 @@ public class Azure {
 
     public boolean loadUserTokenCache() {
         SharedPreferences prefs = context.getSharedPreferences(SHAREDPREFFILE, Context.MODE_PRIVATE);
+
         String userId = prefs.getString(USERIDPREF, null);
         if (userId == null)
             return false;
+
         String token = prefs.getString(TOKENPREF, null);
         if (token == null)
             return false;
+
+        String imageUri = prefs.getString(IMAGEPREF, null);
+        if (imageUri == null)
+            return false;
+
+        String name = prefs.getString(NAMEPREF, null);
+        if (name == null)
+            return false;
+
+
         StaticData.id = userId;
-        StaticData.name = prefs.getString(NAMEPREF, null);
+        StaticData.name = name;
         try {
-            StaticData.imageUri = new URI("https://www.google.com");    //prefs.getString(IMAGEPREF, null)
+            StaticData.imageUri = new URI(imageUri);
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
@@ -100,19 +119,41 @@ public class Azure {
     public void setup() {
         try {
             mobileServiceClient = new MobileServiceClient("https://messagerelay.azurewebsites.net", context);
+            loadUserTokenCache();
 
-            userDataTable = mobileServiceClient.getSyncTable("userData", Data.class);
-            try {
-                sync(userDataTable).get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
     }
 
-    public void storeImageInBlobStorage(final Uri imageuri) {
+    public void setupSync() {
+        userDataTable = mobileServiceClient.getSyncTable("userData", Data.class);
+        try {
+
+            SQLiteLocalStore localStore = new SQLiteLocalStore(mobileServiceClient.getContext(), "userData", null, 1);
+            MobileServiceSyncHandler handler = new ConflictResolvingSyncHandler();
+
+            Map<String, ColumnDataType> tableDefinition = new HashMap<>();
+            tableDefinition.put("id", ColumnDataType.String);
+            tableDefinition.put("latitude", ColumnDataType.String);
+            tableDefinition.put("longitude", ColumnDataType.String);
+            tableDefinition.put("accuracy", ColumnDataType.String);
+            tableDefinition.put("name", ColumnDataType.String);
+            tableDefinition.put("imageUri", ColumnDataType.String);
+            tableDefinition.put("updatedAt", ColumnDataType.Date);
+
+            localStore.defineTable("userData", tableDefinition);
+            syncContext = mobileServiceClient.getSyncContext();
+
+            syncContext.initialize(localStore, handler).get();
+
+            sync();
+        } catch (InterruptedException | ExecutionException | MobileServiceLocalStoreException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void storeImageInBlobStorage(final Uri imageuri, final Activity loginActivity) {
         Thread t = new Thread() {
             @Override
             public void run() {
@@ -139,6 +180,10 @@ public class Azure {
                     StaticData.imageUri = blob.getUri();
                     cacheUserToken(mobileServiceClient.getCurrentUser());
 
+                    Intent intent = new Intent(loginActivity, MainActivity.class);
+                    loginActivity.startActivity(intent);
+                    loginActivity.finish();
+
                 } catch (StorageException | IOException | InvalidKeyException | URISyntaxException e) {
                     e.printStackTrace();
                 }
@@ -160,73 +205,15 @@ public class Azure {
     }
 
     public void insertData(Data data) {
-        ListenableFuture<Data> future = userDataTable.insert(data);
-        Futures.addCallback(future, new FutureCallback<Data>() {
-            @Override
-            public void onSuccess(@Nullable Data result) {
-                Log.d("Insert Data", "Success");
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                t.printStackTrace();
-            }
-        });
-        Log.d("insertData", "trying to sync");
-        ListenableFuture<Void> pushFuture = mobileServiceClient.getSyncContext().push();
-        Futures.addCallback(pushFuture, new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(@Nullable Void result) {
-                Log.d("Insert Push", "Successful");
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                Log.d("Insert Push", "Failed");
-                t.printStackTrace();
-            }
-        });
-        try {
-            userDataTable.pull(null).get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
-        Log.d("insertData", "succeeded");
+        userDataTable.insert(data);
+        sync();
 
     }
 
     public void updateData(Data data) {
-        ListenableFuture<Void> future = userDataTable.update(data);
-        Futures.addCallback(future, new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(@Nullable Void result) {
-                Log.d("Update Data", "Successful");
-            }
+        userDataTable.update(data);
+        sync();
 
-            @Override
-            public void onFailure(Throwable t) {
-                Log.d("Update Data", "Error");
-                t.printStackTrace();
-            }
-        });
-        ListenableFuture<Void> pushFuture = mobileServiceClient.getSyncContext().push();
-        Futures.addCallback(pushFuture, new FutureCallback<Void>() {
-            @Override
-            public void onSuccess(@Nullable Void result) {
-                Log.d("Update Push", "Successful");
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                Log.d("Update Push", "Failed");
-                t.printStackTrace();
-            }
-        });
-        try {
-            userDataTable.pull(null).get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
     }
 
     public boolean loadData() {                 //TODO: call and load Data from this
@@ -249,50 +236,48 @@ public class Azure {
         }
     }
 
-    private AsyncTask<Void, Void, Void> sync(final MobileServiceSyncTable<Data> table) {
+    private void sync() {
         @SuppressLint("StaticFieldLeak") AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
                 try {
-                    SQLiteLocalStore localStore = new SQLiteLocalStore(mobileServiceClient.getContext(), "userData", null, 1);
-                    MobileServiceSyncHandler handler = new ConflictResolvingSyncHandler();
-
-                    Map<String, ColumnDataType> tableDefinition = new HashMap<>();
-                    tableDefinition.put("id", ColumnDataType.String);
-                    tableDefinition.put("latitude", ColumnDataType.String);
-                    tableDefinition.put("longitude", ColumnDataType.String);
-                    tableDefinition.put("accuracy", ColumnDataType.String);
-                    tableDefinition.put("name", ColumnDataType.String);
-                    tableDefinition.put("imageUri", ColumnDataType.String);
-                    tableDefinition.put("updatedAt", ColumnDataType.Date);
-
-                    localStore.defineTable("userData", tableDefinition);
-                    MobileServiceSyncContext syncContext = mobileServiceClient.getSyncContext();
-
-                    syncContext.initialize(localStore, handler).get();
+                    Log.d("Sync", "Starting Push");
                     ListenableFuture<Void> future = syncContext.push();
                     Futures.addCallback(future, new FutureCallback<Void>() {
                         @Override
                         public void onSuccess(@Nullable Void result) {
-                            Log.d("Sync", "Completed");
+                            Log.d("Sync", "Pushed");
                         }
 
                         @Override
-                        public void onFailure(Throwable t) {
-                            Log.d("Sync", "Error");
+                        public void onFailure(@NonNull Throwable t) {
+                            Log.d("Sync", "Error in pushing");
                             t.printStackTrace();
                         }
                     });
                     future.get();
-                    Log.d("Sync", "Didn't reach here");
-                    table.pull(null);
+                    Log.d("Sync", "Starting pull");
+                    future = userDataTable.pull(null);
+                    Futures.addCallback(future, new FutureCallback<Void>() {
+                        @Override
+                        public void onSuccess(@Nullable Void result) {
+                            Log.d("Sync", "Pulled");
+                        }
+
+                        @Override
+                        public void onFailure(@NonNull Throwable t) {
+                            Log.d("Sync", "Error in pulling");
+                            t.printStackTrace();
+                        }
+                    });
+                    Log.d("Sync", "Sync completed");
                 } catch (final Exception e) {
                     e.printStackTrace();
                 }
                 return null;
             }
         };
-        return task.execute();
+        task.execute();
     }
 
     private class ConflictResolvingSyncHandler implements MobileServiceSyncHandler {

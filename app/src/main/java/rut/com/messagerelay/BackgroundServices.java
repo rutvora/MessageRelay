@@ -10,8 +10,6 @@ import android.content.Context;
 import android.location.LocationManager;
 import android.util.Log;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Calendar;
 import java.util.List;
 
@@ -26,10 +24,10 @@ public class BackgroundServices {
     static void scheduleJobCheckEmergency(Context context) {
         ComponentName serviceComponent = new ComponentName(context, CheckEmergencyJob.class);
         JobInfo.Builder builder = new JobInfo.Builder(0, serviceComponent);
-        /*builder.setMinimumLatency(60 * 60 * 1000);
-        builder.setOverrideDeadline(3 * 60 * 60 * 1000);*/
-        builder.setMinimumLatency(1000);
-        builder.setOverrideDeadline(2000);
+        builder.setMinimumLatency(60 * 60 * 1000);
+        builder.setOverrideDeadline(3 * 60 * 60 * 1000);
+//        builder.setMinimumLatency(1 * 1000);
+//        builder.setOverrideDeadline(2 * 1000);
 
         JobScheduler jobScheduler;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -51,7 +49,7 @@ public class BackgroundServices {
         ComponentName serviceComponent = new ComponentName(context, EmergencySituationJob.class);
         JobInfo.Builder builder = new JobInfo.Builder(1, serviceComponent);
         builder.setMinimumLatency(2 * 60 * 1000);                 //TODO: Find optimum updatedAt for this
-        builder.setOverrideDeadline(3 * 60 * 1000);    //TODO: Find optimum updatedAt for this
+        builder.setOverrideDeadline(5 * 60 * 1000);    //TODO: Find optimum updatedAt for this
 
         JobScheduler jobScheduler;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
@@ -83,20 +81,18 @@ public class BackgroundServices {
                     if (locationManager != null) {
                         location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                     }
-                    //Data data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
                     Data data = null;
-                    try {
-                        data = new Data("testID1", "test user", new URI("https://www.google.com"), 0.0, 0.0, 0.0, Calendar.getInstance().getTime());
-                    } catch (URISyntaxException e) {
-                        e.printStackTrace();
-                    }
+                    if (location != null)
+                        data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+
                     if (StaticData.userData.containsKey(StaticData.id)) {
                         StaticData.userData.remove(StaticData.id);
                     }
                     StaticData.userData.put(StaticData.id, data);
                     Azure azure = new Azure(CheckEmergencyJob.this);
                     azure.setup();
-                    azure.updateData(data);
+                    azure.setupSync();
+                    if (data != null) azure.updateData(data);
 
                     Log.d("CheckEmergencyJob", "Data updated");
 

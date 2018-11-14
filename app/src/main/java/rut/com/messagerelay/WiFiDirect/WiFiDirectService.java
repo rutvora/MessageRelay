@@ -1,13 +1,12 @@
 package rut.com.messagerelay.WiFiDirect;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
-import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -22,10 +21,8 @@ import rut.com.messagerelay.UserData.StaticData;
 public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2pManager.DnsSdServiceResponseListener, WifiP2pManager.DnsSdTxtRecordListener {
 
     private final IntentFilter intentFilter = new IntentFilter();
-    private WiFiDirectBroadcastReceiver receiver;
     private WifiP2pManager.Channel channel;
     private WifiP2pManager wifiP2pManager;
-    private boolean isWifiP2pEnabled = true;                //TODO: enable wifi p2p if not (see line 44)
     private Context context;
 
     public WiFiDirectService(Context context) {
@@ -35,17 +32,16 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     public void setup() {
         setupIntentFilters();
         setupBroadcastReceiver();
-        if (isWifiP2pEnabled) {
-            registerLocalService();
-            discoverService();
-        } else {
-            Toast.makeText(context, "WiFi Direct not enabled/available", Toast.LENGTH_SHORT).show();
-            context.startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));           //TODO: Check
-        }
+        WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
+        if (wifiManager != null && wifiManager.getWifiState() != WifiManager.WIFI_STATE_ENABLED) {
+            wifiManager.setWifiEnabled(true);
+        } else if (wifiManager == null)
+            Toast.makeText(context, "Error accessing WiFi hardware", Toast.LENGTH_SHORT).show();
+        registerLocalService();
+        discoverService();
     }
 
     public void setIsWifiP2pEnabled(boolean b) {
-        isWifiP2pEnabled = b;
     }
 
     private void setupIntentFilters() {
@@ -66,7 +62,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     private void setupBroadcastReceiver() {
         wifiP2pManager = (WifiP2pManager) context.getSystemService(Context.WIFI_P2P_SERVICE);
         channel = wifiP2pManager.initialize(context, context.getMainLooper(), null);
-        receiver = new WiFiDirectBroadcastReceiver(wifiP2pManager, channel, this);
+        WiFiDirectBroadcastReceiver receiver = new WiFiDirectBroadcastReceiver(wifiP2pManager, channel, this);
         context.registerReceiver(receiver, intentFilter);
     }
 
@@ -109,9 +105,9 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     @Override
     public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> txtRecordMap, WifiP2pDevice srcDevice) {
         //Log.d(srcDevice.deviceName, txtRecordMap.get("testdata"));
-        //TODO: handle data receiving
         Azure azure = new Azure(context);
         azure.setup();
+        azure.setupSync();
         HashMap<String, Data> receivedMap = new DataManipulator().getHashMap(txtRecordMap.get("messageRelay").getBytes());      //TODO: Test this
         for (String key : receivedMap.keySet()) {
             Data data = receivedMap.get(key);

@@ -29,7 +29,7 @@ public class Location implements LocationListener {
         LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
         if (activity != null) {
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MainActivity.LOCATION_SERVICE_REQUEST);
+                ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MainActivity.LOCATION_PERMISSION_REQUEST);
             } else {
 
                 if (locationManager != null) {
@@ -55,7 +55,6 @@ public class Location implements LocationListener {
 
     @Override
     public void onLocationChanged(android.location.Location location) {
-        //Log.d("Location", location.getLatitude() + ", " + location.getLongitude() + ", " + location.getAccuracy());
         Data data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
         if (StaticData.userData.containsKey(StaticData.id)) {
             StaticData.userData.remove(StaticData.id);
@@ -63,6 +62,7 @@ public class Location implements LocationListener {
         StaticData.userData.put(StaticData.id, data);
         Azure azure = new Azure(context);
         azure.setup();
+        azure.setupSync();
         azure.updateData(data);
     }
 

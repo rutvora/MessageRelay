@@ -1,8 +1,12 @@
 package rut.com.messagerelay;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -117,6 +121,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                     public void onSuccess(LoginResult loginResult) {
                         // App code
                         Log.d("Facebook Login", "Success " + loginResult.getAccessToken().getToken());
+                        findViewById(R.id.loading).setVisibility(View.VISIBLE);
                         azureLogin(loginResult.getAccessToken().getToken(), MobileServiceAuthenticationProvider.Facebook);
                     }
 
@@ -160,7 +165,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         ListenableFuture<MobileServiceUser> mLogin = azure.mobileServiceClient.login(provider, payload.toString());
         Futures.addCallback(mLogin, new FutureCallback<MobileServiceUser>() {
             @Override
-            public void onFailure(Throwable exc) {
+            public void onFailure(@NonNull Throwable exc) {
                 exc.printStackTrace();
             }
 
@@ -178,10 +183,15 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         if (v.getId() == R.id.facebook) {
             loginWithFacebook();
         } else if (v.getId() == R.id.google) {
-            googleSignIn();
+            Toast.makeText(this, "Only facebook supported for demo purposes", Toast.LENGTH_SHORT).show();
+            //googleSignIn();
         } else if (v.getId() == R.id.photo) {
-            imagePicker = new ImagePicker(this, null, this);
-            imagePicker.choosePicture(true);
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+            } else {
+                imagePicker = new ImagePicker(this, null, this);
+                imagePicker.choosePicture(true);
+            }
         } else if (v.getId() == R.id.save) {
             String name = userName.getText().toString();
             if (name.equals("")) {
@@ -193,17 +203,26 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                 return;
             }
             StaticData.name = name;
-            azure.storeImageInBlobStorage(imageUri);
-
-            Intent intent = new Intent(this, MainActivity.class);
-            startActivity(intent);
+            findViewById(R.id.loading).setVisibility(View.VISIBLE);
+            azure.storeImageInBlobStorage(imageUri, this);
         }
 
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
+        if (requestCode == 1 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            imagePicker = new ImagePicker(this, null, this);
+            imagePicker.choosePicture(true);
+        }
+    }
+
+    @Override
     public void onImagePicked(Uri imageUri) {
         this.imageUri = imageUri;
+        ImageView pic = findViewById(R.id.photo);
+        pic.setImageURI(imageUri);
         Log.d("Image Uri", imageUri.toString());
     }
 }

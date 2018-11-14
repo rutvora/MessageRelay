@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="rut.com.messagerelay">
 
     <uses-permission
@@ -17,6 +18,9 @@
         android:required="true" />
     <uses-permission
         android:name="android.permission.INTERNET"
+        android:required="true" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:required="true" />
 
     <application
@@ -50,7 +54,8 @@
 
                 <data
                     android:host="auth.callback"
-                    android:scheme="messageRelay" />
+                    android:scheme="messageRelay"
+                    tools:ignore="AppLinkUrlError" />
             </intent-filter>
         </activity>
         <activity android:name=".LoginActivity" />

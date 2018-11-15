@@ -9,11 +9,14 @@ import android.widget.Toast;
 
 import rut.com.messagerelay.UserData.Azure;
 import rut.com.messagerelay.UserData.Location;
+import rut.com.messagerelay.WiFiDirect.WiFiDirectService;
 
 public class MainActivity extends AppCompatActivity {
 
     public static final int LOCATION_PERMISSION_REQUEST = 0;
     Location location;
+
+    WiFiDirectService wiFiDirectService = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,7 +35,9 @@ public class MainActivity extends AppCompatActivity {
             if (!azure.loadData()) {
                 Toast.makeText(this, "Error loading dataset", Toast.LENGTH_SHORT).show();
             } else {
-                BackgroundServices.scheduleJobCheckEmergency(this);
+                //BackgroundServices.scheduleJobCheckEmergency(this);
+                wiFiDirectService = new WiFiDirectService(this);
+                wiFiDirectService.setup();
             }
         }
     }
@@ -43,6 +48,12 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == LOCATION_PERMISSION_REQUEST && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             new Location(this).setup(this);
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (wiFiDirectService != null) wiFiDirectService.unregisterReceiver();
+        super.onDestroy();
     }
 
 }

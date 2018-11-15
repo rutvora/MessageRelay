@@ -14,6 +14,11 @@ public class Data implements Serializable {
     public String name;
     public String imageUri;
 
+    // TODO: Remove unnecessary data for making it smaller
+    // Use mac address as UID.
+    // Remove name and imageURI from wifiDirect Transfer.
+    // Use multiple registered services for users.
+
     public Data(String id, String name, URI imageUri, double latitude, double longitude, double accuracy, Date updatedAt) {
         this.id = id;
         this.latitude = latitude + "";

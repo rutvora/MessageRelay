@@ -125,12 +125,14 @@ public class BackgroundServices {
 
     public static class EmergencySituationJob extends JobService {
 
+        WiFiDirectService wiFiDirectService;
+
         @Override
         public boolean onStartJob(JobParameters params) {
             Log.d("EmergencySituationJob", "Ran");
             //TODO: Start relay
             //Setup WiFiDirect
-            WiFiDirectService wiFiDirectService = new WiFiDirectService(this);
+            wiFiDirectService = new WiFiDirectService(this);
             wiFiDirectService.setup();
 
             //Setup fetching location
@@ -141,6 +143,7 @@ public class BackgroundServices {
 
         @Override
         public boolean onStopJob(JobParameters params) {
+            wiFiDirectService.unregisterReceiver();
             return false;
         }
     }

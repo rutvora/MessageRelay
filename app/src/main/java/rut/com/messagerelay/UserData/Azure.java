@@ -5,6 +5,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
@@ -42,6 +44,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,6 +82,20 @@ public class Azure {
         editor.putString(NAMEPREF, StaticData.name);
         editor.putString(IMAGEPREF, StaticData.imageUri.toString());
         editor.apply();
+
+        LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        if (locationManager != null) {
+            @SuppressLint("MissingPermission")
+            Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            Data data;
+            if (location != null)
+                data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, location.getLatitude(), location.getLongitude(), location.getAccuracy(), Calendar.getInstance().getTime());
+            else
+                data = new Data(StaticData.id, StaticData.name, StaticData.imageUri, 0.0, 0.0, 0.0, Calendar.getInstance().getTime());
+            StaticData.userData.put(StaticData.id, data);
+        }
+
+
         loadUserTokenCache();
     }
 

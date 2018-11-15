@@ -13,16 +13,12 @@ import android.widget.Toast;
 import java.util.HashMap;
 import java.util.Map;
 
-import rut.com.messagerelay.UserData.Azure;
-import rut.com.messagerelay.UserData.Data;
-import rut.com.messagerelay.UserData.DataManipulator;
-import rut.com.messagerelay.UserData.StaticData;
-
 public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2pManager.DnsSdServiceResponseListener, WifiP2pManager.DnsSdTxtRecordListener {
 
     private final IntentFilter intentFilter = new IntentFilter();
     private WifiP2pManager.Channel channel;
     private WifiP2pManager wifiP2pManager;
+    private WiFiDirectBroadcastReceiver receiver = null;
     private Context context;
 
     public WiFiDirectService(Context context) {
@@ -62,14 +58,18 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     private void setupBroadcastReceiver() {
         wifiP2pManager = (WifiP2pManager) context.getSystemService(Context.WIFI_P2P_SERVICE);
         channel = wifiP2pManager.initialize(context, context.getMainLooper(), null);
-        WiFiDirectBroadcastReceiver receiver = new WiFiDirectBroadcastReceiver(wifiP2pManager, channel, this);
+        receiver = new WiFiDirectBroadcastReceiver(wifiP2pManager, channel, this);
         context.registerReceiver(receiver, intentFilter);
+    }
+
+    public void unregisterReceiver() {
+        if (receiver != null) context.unregisterReceiver(receiver);
     }
 
     private void registerLocalService() {
         HashMap<String, String> record = new HashMap<>();
-        record.put("messageRelay", new String(new DataManipulator().getByteArray()));  //TODO: Test this
-        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("_test", "_presense._tcp", record);   //TODO: Understand this
+        record.put("messageRelay", "Test String");          //new DataManipulator().getString()
+        WifiP2pDnsSdServiceInfo serviceInfo = WifiP2pDnsSdServiceInfo.newInstance("messageRelay", "_presense._tcp", record);
         wifiP2pManager.addLocalService(channel, serviceInfo, this);
     }
 
@@ -80,7 +80,7 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
 
     @Override
     public void onFailure(int reason) {
-        Toast.makeText(context, "Error!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, "Device busy, will retry in a few seconds", Toast.LENGTH_SHORT).show();
         Log.d("Failure", reason + "");
     }
 
@@ -99,29 +99,31 @@ public class WiFiDirectService implements WifiP2pManager.ActionListener, WifiP2p
     @Override
     public void onDnsSdServiceAvailable(String instanceName, String registrationType, WifiP2pDevice srcDevice) {
         Log.d(srcDevice.deviceAddress, srcDevice.deviceName);
-        //TODO: Check whether this is useful
     }
 
     @Override
     public void onDnsSdTxtRecordAvailable(String fullDomainName, Map<String, String> txtRecordMap, WifiP2pDevice srcDevice) {
-        //Log.d(srcDevice.deviceName, txtRecordMap.get("testdata"));
-        Azure azure = new Azure(context);
-        azure.setup();
-        azure.setupSync();
-        HashMap<String, Data> receivedMap = new DataManipulator().getHashMap(txtRecordMap.get("messageRelay").getBytes());      //TODO: Test this
-        for (String key : receivedMap.keySet()) {
-            Data data = receivedMap.get(key);
-            if (StaticData.userData.containsKey(key)) {
-                if (StaticData.userData.get(key).updatedAt.compareTo(data.updatedAt) < 0) {
-                    StaticData.userData.remove(key);
-                    StaticData.userData.put(key, data);
-
-                    azure.updateData(data);
-                }
-            } else {
-                StaticData.userData.put(key, data);
-                azure.insertData(data);
-            }
-        }
+        Log.d(srcDevice.deviceName, txtRecordMap.get("messageRelay"));
+        Toast.makeText(context, "Data received from " + srcDevice.deviceName, Toast.LENGTH_LONG).show();
+//        Azure azure = new Azure(context);
+//        azure.setup();
+//        azure.setupSync();
+//        HashMap<String, Data> receivedMap = new DataManipulator().getHashMap(txtRecordMap.get("messageRelay"));      //TODO: Test this
+//        if (receivedMap == null) return;
+//        for (String key : receivedMap.keySet()) {
+//            Data data = receivedMap.get(key);
+//            Log.d("Received info", "Name: " + data.name);
+//            if (StaticData.userData.containsKey(key)) {
+//                if (StaticData.userData.get(key).updatedAt.compareTo(data.updatedAt) < 0) {
+//                    StaticData.userData.remove(key);
+//                    StaticData.userData.put(key, data);
+//
+//                    azure.updateData(data);
+//                }
+//            } else {
+//                StaticData.userData.put(key, data);
+//                azure.insertData(data);
+//            }
+//        }
     }
 }

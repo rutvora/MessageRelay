@@ -43,6 +43,7 @@ import java.net.MalformedURLException;
 import java.util.Arrays;
 
 import rut.com.messagerelay.UserData.Azure;
+import rut.com.messagerelay.UserData.Location;
 import rut.com.messagerelay.UserData.StaticData;
 
 public class LoginActivity extends AppCompatActivity implements View.OnClickListener, OnImagePickedListener {
@@ -204,7 +205,9 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             }
             StaticData.name = name;
             findViewById(R.id.loading).setVisibility(View.VISIBLE);
-            azure.storeImageInBlobStorage(imageUri, this);
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MainActivity.LOCATION_PERMISSION_REQUEST);
+            }
         }
 
     }
@@ -216,6 +219,10 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             imagePicker = new ImagePicker(this, null, this);
             imagePicker.choosePicture(true);
         }
+        if (requestCode == MainActivity.LOCATION_PERMISSION_REQUEST && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            new Location(this).setup(this);
+            azure.storeImageInBlobStorage(imageUri, this);
+        }
     }
 
     @Override
@@ -225,4 +232,6 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         pic.setImageURI(imageUri);
         Log.d("Image Uri", imageUri.toString());
     }
+
+
 }
